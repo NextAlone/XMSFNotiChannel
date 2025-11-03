@@ -27,6 +27,12 @@ class AboutPageActivity : BaseActivity() {
     override fun onCreate() {
         binding = ActivityAboutPageBinding.inflate(layoutInflater).apply { setContentView(root) }
 
+        // 为根视图添加状态栏高度的顶部 padding，避免顶部内容被状态栏遮挡
+        val statusBarHeight = resources.getIdentifier("status_bar_height", "dimen", "android").let {
+            if (it > 0) resources.getDimensionPixelSize(it) else 0
+        }
+        binding.root.setPadding(0, statusBarHeight, 0, 0)
+
         binding.apply {
 
             titleBackIcon.setOnClickListener { onBackPressed() }

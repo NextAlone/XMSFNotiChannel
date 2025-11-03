@@ -35,6 +35,16 @@ class MainActivity : BaseActivity(), CoroutineScope by MainScope() {
         val nc by lazy { NCUtils(this) }
         binding = ActivityMainBinding.inflate(layoutInflater).apply { setContentView(root) }
 
+        // 为 main_status 添加状态栏高度的顶部 padding，避免被状态栏遮挡
+        val statusBarHeight = resources.getIdentifier("status_bar_height", "dimen", "android").let {
+            if (it > 0) resources.getDimensionPixelSize(it) else 0
+        }
+        binding.mainStatus.setPadding(
+            binding.mainStatus.paddingLeft,
+            binding.mainStatus.paddingTop + statusBarHeight,
+            binding.mainStatus.paddingRight,
+            binding.mainStatus.paddingBottom
+        )
 
         binding.titleAboutPage.setOnClickListener {
             val intent = Intent(this, AboutPageActivity::class.java)
@@ -208,14 +218,6 @@ class MainActivity : BaseActivity(), CoroutineScope by MainScope() {
                 Executor.name,
                 Executor.apiLevel
             )
-
-        window.statusBarColor = getColor(
-            when {
-                YukiHookAPI.Status.isXposedModuleActive &&  androidRestartNeeded -> R.color.yellow
-                YukiHookAPI.Status.isXposedModuleActive -> R.color.green
-                else -> R.color.gray
-            }
-        )
     }
 
     override fun onResume() {

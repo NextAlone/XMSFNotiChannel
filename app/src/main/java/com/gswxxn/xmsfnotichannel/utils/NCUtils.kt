@@ -6,37 +6,56 @@ import android.app.NotificationChannelGroup
 import android.app.NotificationManager
 import android.content.Context
 import android.os.IBinder
-import java.lang.reflect.Method
+import org.lsposed.hiddenapibypass.HiddenApiBypass
+
 
 @SuppressLint("PrivateApi", "SoonBlockedPrivateApi", "DiscouragedPrivateApi")
-class NCUtils(private val context : Context) {
+class NCUtils(private val context: Context) {
 
     private val sINM by lazy {
-        val notificationService = Class.forName("android.os.ServiceManager").getDeclaredMethod("getService",
+        val notificationService = Class.forName("android.os.ServiceManager").getDeclaredMethod(
+            "getService",
             String::class.java
         ).invoke(null, "notification")
 
-        Class.forName("android.app.INotificationManager\$Stub").getDeclaredMethod("asInterface", IBinder::class.java)
+        Class.forName("android.app.INotificationManager\$Stub")
+            .getDeclaredMethod("asInterface", IBinder::class.java)
             .invoke(null, notificationService)
     }
 
-    private val notificationChannelGroupsM = sINM.javaClass.getDeclaredMethod(
+    private val notificationChannelGroupsM = HiddenApiBypass.getDeclaredMethod(
+        sINM.javaClass,
         "getNotificationChannelGroupsForPackage",
         String::class.java,
         Int::class.java,
-        Boolean::class.java) as Method
+        Boolean::class.java
+    )
 
-    private val updateNotificationChannelForPackageM = sINM.javaClass.getDeclaredMethod(
+    private val updateNotificationChannelForPackageM = HiddenApiBypass.getDeclaredMethod(
+        sINM.javaClass,
         "updateNotificationChannelForPackage",
         String::class.java,
         Int::class.java,
-        NotificationChannel::class.java) as Method
+        NotificationChannel::class.java
+    )
 
-    private fun getNotificationChannelGroups(pkgName: String) =
-        notificationChannelGroupsM.invoke(sINM, pkgName, context.packageManager.getPackageUid(pkgName, 0), false).let {
-            Class.forName("android.content.pm.ParceledListSlice").getDeclaredMethod("getList")
-                .invoke(it) as List<NotificationChannelGroup>
+    private fun getNotificationChannelGroups(pkgName: String): List<NotificationChannelGroup> {
+        return try {
+            notificationChannelGroupsM.invoke(
+                sINM,
+                pkgName,
+                context.packageManager.getPackageUid(pkgName, 0),
+                false
+            )?.let { parceledListSlice ->
+                HiddenApiBypass.getDeclaredMethod(
+                    parceledListSlice.javaClass,
+                    "getList"
+                ).invoke(parceledListSlice) as? List<NotificationChannelGroup>
+            } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
         }
+    }
 
     private fun setNotificationChannel(pkgName: String, channel: NotificationChannel): Any? =
         updateNotificationChannelForPackageM.invoke(
@@ -44,15 +63,22 @@ class NCUtils(private val context : Context) {
         )
 
     // 获取通知通道信息
-    fun getNotificationChannelInfoByRegex(pkgName: String, channelNameRegex: String): List<AppInfoHelper.NCInfo> {
-        val ncInfoList = mutableListOf<AppInfoHelper.NCInfo>()
-        getNotificationChannelGroups(pkgName).forEach{ notificationChannelGroup ->
-            notificationChannelGroup.channels.forEach {
-                if (it.name.matches(Regex(channelNameRegex)))
-                    ncInfoList.add(AppInfoHelper.NCInfo(notificationChannelGroup.name?.toString() ?: "", it.name.toString(), it.importance))
+    fun getNotificationChannelInfoByRegex(
+        pkgName: String,
+        channelNameRegex: String
+    ): List<AppInfoHelper.NCInfo> {
+        val groups = getNotificationChannelGroups(pkgName)
+        val result = groups
+            .flatMap { group -> group.channels.map { it to group } }
+            .filter { Regex(channelNameRegex).containsMatchIn(it.first.name) }
+            .map {
+                AppInfoHelper.NCInfo(
+                    it.second.name?.toString() ?: "",
+                    it.first.name.toString(),
+                    it.first.importance
+                )
             }
-        }
-        return ncInfoList
+        return result
     }
 
     fun enableSpecificNotification(appInfo: AppInfoHelper.MyAppInfo) {

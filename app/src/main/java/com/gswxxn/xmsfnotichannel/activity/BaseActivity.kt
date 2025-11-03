@@ -1,9 +1,9 @@
 package com.gswxxn.xmsfnotichannel.activity
 
 import android.app.Activity
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
-import com.gswxxn.xmsfnotichannel.R
 
 abstract class BaseActivity : Activity() {
 
@@ -11,8 +11,9 @@ abstract class BaseActivity : Activity() {
         super.onCreate(savedInstanceState)
         actionBar?.hide()
         window.apply {
-            statusBarColor = getColor(R.color.colorThemeBackground)
-            navigationBarColor = getColor(R.color.colorThemeBackground)
+            decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            statusBarColor = Color.TRANSPARENT
+            navigationBarColor = Color.TRANSPARENT
         }
         onCreate()
     }
